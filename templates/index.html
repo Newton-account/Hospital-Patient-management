@@ -1,0 +1,144 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Hospital Triage System</title>
+    <script>
+        async function addPatient() {
+            const patient = {
+                id: document.getElementById("id").value,
+                name: document.getElementById("name").value,
+                severity: document.getElementById("severity").value,
+                waiting_time: document.getElementById("waiting").value
+            };
+
+            await fetch("http://localhost:5000/patients", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(patient)
+            });
+
+            loadPatients();
+        }
+
+        async function loadPatients() {
+            const res = await fetch("http://localhost:5000/patients");
+            const data = await res.json();
+
+            let list = document.getElementById("list");
+            list.innerHTML = "";
+
+            data.forEach(p => {
+                list.innerHTML += `<li>${p.name} - Severity ${p.severity} - Wait ${p.waiting_time}</li>`;
+            });
+        }
+
+        async function allocateBeds() {
+            const beds = document.getElementById("beds").value;
+            const res = await fetch(`http://localhost:5000/allocate/${beds}`);
+            const data = await res.json();
+
+            let result = document.getElementById("allocated");
+            result.innerHTML = "<h3>Allocated:</h3>";
+
+            data.forEach(p => {
+                result.innerHTML += `<p>${p.name}</p>`;
+            });
+        }
+    </script>
+</head>
+<body onload="loadPatients()">
+    <h1>🏥 Hospital Triage System</h1>
+
+    <h2>Add Patient</h2>
+    <input id="id" placeholder="ID"><br>
+    <input id="name" placeholder="Name"><br>
+    <input id="severity" placeholder="Severity (1-4)"><br>
+    <input id="waiting" placeholder="Waiting Time"><br>
+    <button onclick="addPatient()">Add</button>
+
+    <h2>Patients (Sorted)</h2>
+    <ul id="list"></ul>
+
+    <h2>Allocate Beds</h2>
+    <input id="beds" placeholder="Number of Beds">
+    <button onclick="allocateBeds()">Allocate</button>
+
+    <div id="allocated"></div>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hospital Management System</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+
+        .box {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+        }
+
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🏥 Hospital Management System</h1>
+
+<div class="box">
+    <h2>Add Patient</h2>
+
+    <input id="nrc" placeholder="NRC">
+    <input id="name" placeholder="Name">
+    <input id="severity" placeholder="Severity (1-5)">
+    <input id="waiting_time" placeholder="Waiting Time">
+
+    <button onclick="addPatient()">Save</button>
+</div>
+
+<div class="box">
+    <h2>Load Patients</h2>
+    <button onclick="loadPatients()">Refresh</button>
+    <pre id="output"></pre>
+</div>
+
+<script>
+function addPatient() {
+    fetch("/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            nrc: document.getElementById("nrc").value,
+            name: document.getElementById("name").value,
+            severity: document.getElementById("severity").value,
+            waiting_time: document.getElementById("waiting_time").value
+        })
+    }).then(res => res.json())
+      .then(data => alert(data.message));
+}
+
+function loadPatients() {
+    fetch("/patients")
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("output").textContent =
+            JSON.stringify(data, null, 2);
+    });
+}
+</script>
+
+</body>
+</html>
