@@ -73,7 +73,11 @@
 <head>
     <title>Hospital Management System</title>
     <style>
-        body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #f4f4f4;
+        }
 
         .box {
             background: white;
@@ -90,6 +94,27 @@
         button {
             padding: 8px 12px;
             cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #0077b6;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
         }
     </style>
 </head>
@@ -110,9 +135,21 @@
 </div>
 
 <div class="box">
-    <h2>Load Patients</h2>
+    <h2>Patient Dashboard</h2>
     <button onclick="loadPatients()">Refresh</button>
-    <pre id="output"></pre>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Patient ID</th>
+                <th>Name</th>
+                <th>NRC</th>
+                <th>Severity</th>
+                <th>Waiting Time</th>
+            </tr>
+        </thead>
+        <tbody id="output"></tbody>
+    </table>
 </div>
 
 <script>
@@ -126,18 +163,46 @@ function addPatient() {
             severity: document.getElementById("severity").value,
             waiting_time: document.getElementById("waiting_time").value
         })
-    }).then(res => res.json())
-      .then(data => alert(data.message));
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+
+        // Clear input fields after save
+        document.getElementById("nrc").value = "";
+        document.getElementById("name").value = "";
+        document.getElementById("severity").value = "";
+        document.getElementById("waiting_time").value = "";
+
+        // Reload patients automatically
+        loadPatients();
+    });
 }
 
 function loadPatients() {
     fetch("/patients")
     .then(res => res.json())
     .then(data => {
-        document.getElementById("output").textContent =
-            JSON.stringify(data, null, 2);
+        let rows = "";
+
+        data.forEach(patient => {
+            rows += `
+                <tr>
+                    <td>P${String(patient.id).padStart(3, '0')}</td>
+                    <td>${patient.name}</td>
+                    <td>${patient.nrc}</td>
+                    <td>${patient.severity}</td>
+                    <td>${patient.waiting_time} mins</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById("output").innerHTML = rows;
     });
 }
+
+// Load patients when page opens
+loadPatients();
 </script>
 
 </body>
