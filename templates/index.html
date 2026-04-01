@@ -86,14 +86,30 @@
             border-radius: 10px;
         }
 
-        input {
+        input, select {
             padding: 8px;
             margin: 5px;
+            width: 200px;
         }
 
         button {
             padding: 8px 12px;
             cursor: pointer;
+            margin: 5px;
+        }
+
+        .discharge-btn {
+            background-color: crimson;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .allocate-box {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
         }
 
         table {
@@ -116,6 +132,13 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+
+        .priority-list {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 8px;
+        }
     </style>
 </head>
 
@@ -128,10 +151,36 @@
 
     <input id="nrc" placeholder="NRC">
     <input id="name" placeholder="Name">
-    <input id="severity" placeholder="Severity (1-5)">
-    <input id="waiting_time" placeholder="Waiting Time">
+    <input id="age" placeholder="Age" type="number">
+
+    <select id="severity">
+        <option value="">Select Severity</option>
+        <option value="1">1 - Critical</option>
+        <option value="2">2 - Very Serious</option>
+        <option value="3">3 - Moderate</option>
+        <option value="4">4 - Mild</option>
+        <option value="5">5 - Stable</option>
+    </select>
+
+    <input id="waiting_time" placeholder="Waiting Time (mins)" type="number">
+
+    <select id="gender">
+        <option value="">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+    </select>
+
+    <input id="phone" placeholder="Phone Number">
+    <input id="address" placeholder="Address">
 
     <button onclick="addPatient()">Save</button>
+</div>
+
+<div class="box">
+    <h2>Search Patient</h2>
+    <input id="search_id" placeholder="Enter Patient ID (e.g. 1)">
+    <button onclick="searchPatient()">Search</button>
+    <div id="search_result"></div>
 </div>
 
 <div class="box">
@@ -144,15 +193,42 @@
                 <th>Patient ID</th>
                 <th>Name</th>
                 <th>NRC</th>
+                <th>Age</th>
                 <th>Severity</th>
                 <th>Waiting Time</th>
+                <th>Gender</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody id="output"></tbody>
     </table>
 </div>
 
+<div class="box allocate-box">
+    <h2>Bed Allocation (Priority Queue Simulation)</h2>
+    <input id="bed_count" type="number" placeholder="Enter number of beds">
+    <button onclick="allocateBeds()">Allocate Beds</button>
+
+    <div class="priority-list">
+        <h3>Allocated Patients</h3>
+        <div id="allocation_output">No beds allocated yet.</div>
+    </div>
+</div>
+
 <script>
+function getSeverityLabel(severity) {
+    switch (String(severity)) {
+        case "1": return "Critical";
+        case "2": return "Very Serious";
+        case "3": return "Moderate";
+        case "4": return "Mild";
+        case "5": return "Stable";
+        default: return "Unknown";
+    }
+}
+
 function addPatient() {
     fetch("/patients", {
         method: "POST",
@@ -160,22 +236,109 @@ function addPatient() {
         body: JSON.stringify({
             nrc: document.getElementById("nrc").value,
             name: document.getElementById("name").value,
+            age: document.getElementById("age").value,
             severity: document.getElementById("severity").value,
-            waiting_time: document.getElementById("waiting_time").value
+            waiting_time: document.getElementById("waiting_time").value,
+            gender: document.getElementById("gender").value,
+            phone: document.getElementById("phone").value,
+            address: document.getElementById("address").value
         })
     })
     .then(res => res.json())
     .then(data => {
         alert(data.message);
 
-        // Clear input fields after save
         document.getElementById("nrc").value = "";
         document.getElementById("name").value = "";
+        document.getElementById("age").value = "";
         document.getElementById("severity").value = "";
         document.getElementById("waiting_time").value = "";
+        document.getElementById("gender").value = "";
+        document.getElementById("phone").value = "";
+        document.getElementById("address").value = "";
 
-        // Reload patients automatically
         loadPatients();
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Failed to save patient.");
+    });
+}
+
+function dischargePatient(id) {
+    if (confirm("Are you sure you want to discharge this patient?")) {
+        fetch(`/patients/${id}`, {
+            method: "DELETE"
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            loadPatients();
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Failed to discharge patient.");
+        });
+    }
+}
+
+function searchPatient() {
+    const id = document.getElementById("search_id").value;
+
+    fetch(`/search/${id}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById("search_result").innerHTML = `<p style="color:red;">${data.error}</p>`;
+        } else {
+            document.getElementById("search_result").innerHTML = `
+                <p><strong>Patient Found:</strong></p>
+                <p>ID: P${String(data.id).padStart(3, '0')}</p>
+                <p>Name: ${data.name}</p>
+                <p>NRC: ${data.nrc}</p>
+                <p>Age: ${data.age}</p>
+                <p>Severity: ${data.severity} - ${getSeverityLabel(data.severity)}</p>
+                <p>Waiting Time: ${data.waiting_time} mins</p>
+                <p>Gender: ${data.gender || ""}</p>
+                <p>Phone: ${data.phone || ""}</p>
+                <p>Address: ${data.address || ""}</p>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        document.getElementById("search_result").innerHTML = `<p style="color:red;">Search failed.</p>`;
+    });
+}
+
+function allocateBeds() {
+    const beds = document.getElementById("bed_count").value;
+
+    fetch(`/allocate/${beds}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.length === 0) {
+            document.getElementById("allocation_output").innerHTML = "No patients available.";
+            return;
+        }
+
+        let output = "<ul>";
+        data.forEach(patient => {
+            output += `
+                <li>
+                    <strong>P${String(patient.id).padStart(3, '0')}</strong> - 
+                    ${patient.name} | Severity: ${patient.severity} - ${getSeverityLabel(patient.severity)} | 
+                    Waiting: ${patient.waiting_time} mins
+                </li>
+            `;
+        });
+        output += "</ul>";
+
+        document.getElementById("allocation_output").innerHTML = output;
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        document.getElementById("allocation_output").innerHTML = "Allocation failed.";
     });
 }
 
@@ -191,17 +354,28 @@ function loadPatients() {
                     <td>P${String(patient.id).padStart(3, '0')}</td>
                     <td>${patient.name}</td>
                     <td>${patient.nrc}</td>
-                    <td>${patient.severity}</td>
+                    <td>${patient.age || ""}</td>
+                    <td>${patient.severity} - ${getSeverityLabel(patient.severity)}</td>
                     <td>${patient.waiting_time} mins</td>
+                    <td>${patient.gender || ""}</td>
+                    <td>${patient.phone || ""}</td>
+                    <td>${patient.address || ""}</td>
+                    <td>
+                        <button class="discharge-btn" onclick="dischargePatient(${patient.id})">
+                            Discharge
+                        </button>
+                    </td>
                 </tr>
             `;
         });
 
         document.getElementById("output").innerHTML = rows;
+    })
+    .catch(error => {
+        console.error("Error loading patients:", error);
     });
 }
 
-// Load patients when page opens
 loadPatients();
 </script>
 

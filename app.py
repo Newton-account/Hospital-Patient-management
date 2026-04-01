@@ -1,161 +1,13 @@
-# from flask import Flask, jsonify, request, render_template
-# import sqlite3
-# # from flask_cors import CORS
-# # CORS(app)
-
-# app = Flask(__name__)
-# @app.route("/")
-# def home():
-#     return render_template("index.html")
-
-# # ---- Patient Model ----
-# class Patient:
-#     def __init__(self, patient_id, name, severity, waiting_time):
-#         self.id = patient_id
-#         self.name = name
-#         self.severity = severity
-#         self.waiting_time = waiting_time
-
-#     def to_dict(self):
-#         return self.__dict__
-
-
-# patients = []
-
-
-# # ---- Merge Sort ----
-# def merge_sort(arr):
-#     if len(arr) <= 1:
-#         return arr
-
-#     mid = len(arr)//2
-#     left = merge_sort(arr[:mid])
-#     right = merge_sort(arr[mid:])
-
-#     return merge(left, right)
-
-
-# def merge(left, right):
-#     result = []
-#     i = j = 0
-
-#     while i < len(left) and j < len(right):
-#         if compare(left[i], right[j]):
-#             result.append(left[i])
-#             i += 1
-#         else:
-#             result.append(right[j])
-#             j += 1
-
-#     return result + left[i:] + right[j:]
-
-
-# def compare(a, b):
-#     if a.severity != b.severity:
-#         return a.severity < b.severity
-#     return a.waiting_time > b.waiting_time
-
-
-# # ---- Routes ----
-
-# @app.route("/patients", methods=["POST"])
-# def add_patient():
-#     data = request.json
-
-#     conn = sqlite3.connect("hospital.db")
-#     cursor = conn.cursor()
-
-#     cursor.execute("""
-#         INSERT INTO patients (id, name, severity, waiting_time)
-#         VALUES (?, ?, ?, ?)
-#     """, (data["id"], data["name"], data["severity"], data["waiting_time"]))
-
-#     conn.commit()
-#     conn.close()
-
-#     return jsonify({"message": "Patient saved to database"})
-
-
-# @app.route("/patients", methods=["GET"])
-# def get_patients():
-#     conn = sqlite3.connect("hospital.db")
-#     cursor = conn.cursor()
-
-#     cursor.execute("SELECT id, name, severity, waiting_time FROM patients")
-#     rows = cursor.fetchall()
-#     conn.close()
-
-#     patients_list = [
-#         Patient(r[0], r[1], r[2], r[3]) for r in rows
-#     ]
-
-#     sorted_list = merge_sort(patients_list)
-
-#     return jsonify([p.to_dict() for p in sorted_list])
-
-
-# @app.route("/search/<int:patient_id>")
-# def search(patient_id):
-#     conn = sqlite3.connect("hospital.db")
-#     cursor = conn.cursor()
-
-#     cursor.execute("SELECT id, name, severity, waiting_time FROM patients WHERE id=?", (patient_id,))
-#     row = cursor.fetchone()
-
-#     conn.close()
-
-#     if row:
-#         return jsonify(Patient(row[0], row[1], row[2], row[3]).to_dict())
-
-#     return jsonify({"error": "Not found"}), 404
-
-
-# @app.route("/allocate/<int:beds>")
-# def allocate(beds):
-#     conn = sqlite3.connect("hospital.db")
-#     cursor = conn.cursor()
-
-#     cursor.execute("SELECT id, name, severity, waiting_time FROM patients")
-#     rows = cursor.fetchall()
-#     conn.close()
-
-#     patients_list = [Patient(*r) for r in rows]
-#     sorted_list = merge_sort(patients_list)
-
-#     allocated = sorted_list[:beds]
-
-#     return jsonify([p.to_dict() for p in allocated])
-
-# import sqlite3
-
-# #create db and table fields
-# def init_db():
-#     conn = sqlite3.connect("hospital.db")
-#     cursor = conn.cursor()
-
-#     cursor.execute("""
-#     CREATE TABLE IF NOT EXISTS patients (
-#         id INTEGER PRIMARY KEY,
-#         name TEXT,
-#         severity INTEGER,
-#         waiting_time INTEGER
-#     )
-#     """)
-
-#     conn.commit()
-#     conn.close()
-
-
-# if __name__ == "__main__":
-#     init_db()
-#     app.run(debug=True)
-
-
 from flask import Flask, jsonify, request, render_template
-from database import get_connection
+from database import get_connection, init_db
 from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
+
+# Initialize database
+init_db()
+
 
 # ---------------- UI ----------------
 @app.route("/")
@@ -165,13 +17,16 @@ def home():
 
 # ---------------- MODEL ----------------
 class Patient:
-    def __init__(self, patient_id,nrc, name, severity, waiting_time):
+    def __init__(self, patient_id, nrc, name, age, severity, waiting_time, gender=None, phone=None, address=None):
         self.id = patient_id
         self.nrc = nrc
         self.name = name
-        self.nrc = self.nrc
+        self.age = age
         self.severity = severity
         self.waiting_time = waiting_time
+        self.gender = gender
+        self.phone = phone
+        self.address = address
 
     def to_dict(self):
         return self.__dict__
@@ -179,9 +34,9 @@ class Patient:
 
 # ---------------- SORTING (Merge Sort) ----------------
 def compare(a, b):
-    if a.severity != b.severity:
-        return a.severity < b.severity
-    return a.waiting_time > b.waiting_time
+    if int(a.severity) != int(b.severity):
+        return int(a.severity) < int(b.severity)
+    return int(a.waiting_time) > int(b.waiting_time)
 
 
 def merge(left, right):
@@ -213,13 +68,27 @@ def merge_sort(arr):
 @app.route("/patients", methods=["POST"])
 def add_patient():
     data = request.json
+
+    severity = str(data.get("severity", "")).strip()
+    if severity not in ["1", "2", "3", "4", "5"]:
+        return jsonify({"message": "Severity must be between 1 and 5"}), 400
+
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO patients (nrc, name, severity, waiting_time)
-        VALUES (?, ?, ?, ?)
-    """, (data["nrc"], data["name"], data["severity"], data["waiting_time"]))
+        INSERT INTO patients (nrc, name, age, severity, waiting_time, gender, phone, address)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        data["nrc"],
+        data["name"],
+        data.get("age"),
+        severity,
+        data["waiting_time"],
+        data.get("gender"),
+        data.get("phone"),
+        data.get("address")
+    ))
 
     conn.commit()
     conn.close()
@@ -227,20 +96,35 @@ def add_patient():
     return jsonify({"message": "Patient saved successfully"})
 
 
-# ---------------- GET PATIENTS (SORTED) ----------------
+# ---------------- GET PATIENTS ----------------
 @app.route("/patients", methods=["GET"])
 def get_patients():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id,nrc, name, severity, waiting_time FROM patients")
+    cursor.execute("""
+        SELECT id, nrc, name, age, severity, waiting_time, gender, phone, address
+        FROM patients
+        ORDER BY id DESC
+    """)
+
     rows = cursor.fetchall()
     conn.close()
 
-    patients = [Patient(*r) for r in rows]
-    sorted_patients = merge_sort(patients)
+    return jsonify([dict(row) for row in rows])
 
-    return jsonify([p.to_dict() for p in sorted_patients])
+
+# ---------------- DISCHARGE PATIENT ----------------
+@app.route("/patients/<int:patient_id>", methods=["DELETE"])
+def discharge_patient(patient_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": f"Patient P{str(patient_id).zfill(3)} discharged successfully"})
 
 
 # ---------------- SEARCH ----------------
@@ -250,15 +134,16 @@ def search(patient_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, name, severity, waiting_time 
-        FROM patients WHERE id=?
+        SELECT id, nrc, name, age, severity, waiting_time, gender, phone, address
+        FROM patients
+        WHERE id=?
     """, (patient_id,))
 
     row = cursor.fetchone()
     conn.close()
 
     if row:
-        return jsonify(Patient(*row).to_dict())
+        return jsonify(dict(row))
 
     return jsonify({"error": "Patient not found"}), 404
 
@@ -269,13 +154,30 @@ def allocate(beds):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, name, severity, waiting_time FROM patients")
+    cursor.execute("""
+        SELECT id, nrc, name, age, severity, waiting_time, gender, phone, address
+        FROM patients
+    """)
     rows = cursor.fetchall()
     conn.close()
 
-    patients = merge_sort([Patient(*r) for r in rows])
+    patients = [
+        Patient(
+            row["id"],
+            row["nrc"],
+            row["name"],
+            row["age"],
+            row["severity"],
+            row["waiting_time"],
+            row["gender"],
+            row["phone"],
+            row["address"]
+        )
+        for row in rows
+    ]
 
-    allocated = patients[:beds]
+    sorted_patients = merge_sort(patients)
+    allocated = sorted_patients[:beds]
 
     return jsonify([p.to_dict() for p in allocated])
 
