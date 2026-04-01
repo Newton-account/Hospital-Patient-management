@@ -1,187 +1,356 @@
-from flask import Flask, jsonify, request, render_template
-from database import get_connection, init_db
-from flask_cors import CORS
+from flask import Flask, render_template, request, redirect, jsonify
+from database import (
+    create_table,
+    add_patient,
+    get_all_patients,
+    delete_patient,
+    update_patient,
+    get_patient_by_id,
+    search_patients,
+    sort_by_severity
+)
+from hash_table import HashTable
+from queue_module import PatientQueue
+from stack_module import ActionStack
+from linked_list import LinkedList
+from binary_tree import BinarySearchTree
+import json
+import os
 
 app = Flask(__name__)
-CORS(app)
 
 # Initialize database
-init_db()
+create_table()
+
+# Initialize data structures
+patient_hash_table = HashTable()
+patient_queue = PatientQueue()
+action_stack = ActionStack()
+patient_linked_list = LinkedList()
+patient_tree = BinarySearchTree()
+
+# Fixed hospital bed inventory
+ALL_BEDS = [
+    "B01", "B02", "B03", "B04", "B05",
+    "B06", "B07", "B08", "B09", "B10",
+    "ICU01", "ICU02", "ICU03", "ICU04", "ICU05"
+]
 
 
-# ---------------- UI ----------------
-@app.route("/")
-def home():
-    return render_template("index.html")
+def severity_label(severity):
+    severity = int(severity)
+    labels = {
+        1: "1 - Mild",
+        2: "2 - Moderate",
+        3: "3 - Serious",
+        4: "4 - Critical",
+        5: "5 - Emergency"
+    }
+    return labels.get(severity, str(severity))
 
 
-# ---------------- MODEL ----------------
-class Patient:
-    def __init__(self, patient_id, nrc, name, age, severity, waiting_time, gender=None, phone=None, address=None):
-        self.id = patient_id
-        self.nrc = nrc
-        self.name = name
-        self.age = age
-        self.severity = severity
-        self.waiting_time = waiting_time
-        self.gender = gender
-        self.phone = phone
-        self.address = address
+def get_allocated_beds():
+    patients = get_all_patients()
+    allocated = []
 
-    def to_dict(self):
-        return self.__dict__
+    for patient in patients:
+        if patient["bed_number"] and patient["bed_status"] == "Allocated":
+            allocated.append(patient["bed_number"])
+
+    return allocated
 
 
-# ---------------- SORTING (Merge Sort) ----------------
-def compare(a, b):
-    if int(a.severity) != int(b.severity):
-        return int(a.severity) < int(b.severity)
-    return int(a.waiting_time) > int(b.waiting_time)
+def get_available_beds():
+    allocated = get_allocated_beds()
+    return [bed for bed in ALL_BEDS if bed not in allocated]
 
 
-def merge(left, right):
-    result = []
-    i = j = 0
+def load_all_structures():
+    global patient_hash_table, patient_queue, patient_linked_list, patient_tree
 
-    while i < len(left) and j < len(right):
-        if compare(left[i], right[j]):
-            result.append(left[i])
-            i += 1
-        else:
-            result.append(right[j])
-            j += 1
+    patient_hash_table = HashTable()
+    patient_queue = PatientQueue()
+    patient_linked_list = LinkedList()
+    patient_tree = BinarySearchTree()
 
-    return result + left[i:] + right[j:]
+    patients = get_all_patients()
+    print(f"[INFO] Loading structures with {len(patients)} patient(s)")
 
-
-def merge_sort(arr):
-    if len(arr) <= 1:
-        return arr
-
-    mid = len(arr) // 2
-    left = merge_sort(arr[:mid])
-    right = merge_sort(arr[mid:])
-    return merge(left, right)
+    for patient in patients:
+        patient_hash_table.insert(patient["id"], patient)
+        patient_queue.enqueue(patient)
+        patient_linked_list.append(patient)
+        patient_tree.insert(patient)
 
 
-# ---------------- ADD PATIENT ----------------
-@app.route("/patients", methods=["POST"])
-def add_patient():
-    data = request.json
+def import_sample_patients():
+    patients = get_all_patients()
 
-    severity = str(data.get("severity", "")).strip()
-    if severity not in ["1", "2", "3", "4", "5"]:
-        return jsonify({"message": "Severity must be between 1 and 5"}), 400
+    if len(patients) > 0:
+        return 0, "Database already has patients. No sample data imported."
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    if not os.path.exists("sample_patients.json"):
+        return 0, "sample_patients.json NOT FOUND in project folder."
 
-    cursor.execute("""
-        INSERT INTO patients (nrc, name, age, severity, waiting_time, gender, phone, address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        data["nrc"],
-        data["name"],
-        data.get("age"),
-        severity,
-        data["waiting_time"],
-        data.get("gender"),
-        data.get("phone"),
-        data.get("address")
-    ))
+    try:
+        with open("sample_patients.json", "r", encoding="utf-8") as file:
+            sample_data = json.load(file)
 
-    conn.commit()
-    conn.close()
+        inserted = 0
+        for patient in sample_data:
+            add_patient(
+                patient["name"],
+                patient["age"],
+                patient["gender"],
+                patient["phone"],
+                patient["address"],
+                patient["condition"],
+                patient["severity"],
+                "Waiting",
+                patient.get("bed_number", ""),
+                patient.get("bed_status", "Not Allocated")
+            )
+            inserted += 1
 
-    return jsonify({"message": "Patient saved successfully"})
+        load_all_structures()
+        return inserted, f"Successfully imported {inserted} sample patient(s)."
 
-
-# ---------------- GET PATIENTS ----------------
-@app.route("/patients", methods=["GET"])
-def get_patients():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, nrc, name, age, severity, waiting_time, gender, phone, address
-        FROM patients
-        ORDER BY id DESC
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return jsonify([dict(row) for row in rows])
+    except Exception as e:
+        return 0, f"Error importing sample patients: {str(e)}"
 
 
-# ---------------- DISCHARGE PATIENT ----------------
-@app.route("/patients/<int:patient_id>", methods=["DELETE"])
-def discharge_patient(patient_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": f"Patient P{str(patient_id).zfill(3)} discharged successfully"})
+load_all_structures()
 
 
-# ---------------- SEARCH ----------------
-@app.route("/search/<int:patient_id>")
-def search(patient_id):
-    conn = get_connection()
-    cursor = conn.cursor()
+@app.route('/')
+def index():
+    patients = get_all_patients()
+    return render_template('index.html', patients=patients, severity_label=severity_label)
 
-    cursor.execute("""
-        SELECT id, nrc, name, age, severity, waiting_time, gender, phone, address
-        FROM patients
-        WHERE id=?
-    """, (patient_id,))
 
-    row = cursor.fetchone()
-    conn.close()
+@app.route('/beds')
+def beds():
+    allocated = get_allocated_beds()
+    available = get_available_beds()
 
-    if row:
-        return jsonify(dict(row))
+    return render_template(
+        'beds.html',
+        total_beds=len(ALL_BEDS),
+        allocated_count=len(allocated),
+        available_count=len(available),
+        allocated_beds=allocated,
+        available_beds=available,
+        all_beds=ALL_BEDS
+    )
 
+
+@app.route('/add', methods=['POST'])
+def add():
+    name = request.form['name']
+    age = request.form['age']
+    gender = request.form['gender']
+    phone = request.form['phone']
+    address = request.form['address']
+    condition = request.form['condition']
+    severity = request.form['severity']
+    bed_number = request.form.get('bed_number', '')
+    bed_status = request.form.get('bed_status', 'Not Allocated')
+
+    add_patient(name, age, gender, phone, address, condition, severity, "Waiting", bed_number, bed_status)
+    action_stack.push(f"Added patient: {name}")
+    load_all_structures()
+
+    return redirect('/')
+
+
+@app.route('/delete/<int:patient_id>')
+def delete(patient_id):
+    delete_patient(patient_id)
+    action_stack.push(f"Deleted patient ID: {patient_id}")
+    load_all_structures()
+    return redirect('/')
+
+
+@app.route('/discharge/<int:patient_id>')
+def discharge(patient_id):
+    patient = get_patient_by_id(patient_id)
+
+    if not patient:
+        return "Patient not found", 404
+
+    update_patient(
+        patient_id,
+        patient["name"],
+        patient["age"],
+        patient["gender"],
+        patient["phone"],
+        patient["address"],
+        patient["condition"],
+        patient["severity"],
+        "Discharged",
+        "",
+        "Released"
+    )
+
+    action_stack.push(f"Discharged patient ID: {patient_id}")
+    load_all_structures()
+    return redirect('/')
+
+
+@app.route('/allocate-bed/<int:patient_id>', methods=['GET', 'POST'])
+def allocate_bed(patient_id):
+    patient = get_patient_by_id(patient_id)
+
+    if not patient:
+        return "Patient not found", 404
+
+    available_beds = get_available_beds()
+
+    # Allow current patient to keep their own bed (important for reallocation)
+    if patient["bed_number"] and patient["bed_number"] not in available_beds:
+        available_beds.append(patient["bed_number"])
+
+    if request.method == 'POST':
+        bed_number = request.form['bed_number']
+
+        # Safety check: prevent assigning an already occupied bed
+        if bed_number not in get_available_beds() and bed_number != patient["bed_number"]:
+            return "Error: Bed already allocated to another patient", 400
+
+        new_status = patient["status"]
+        if patient["status"] == "Discharged":
+            new_status = "Admitted"
+
+        update_patient(
+            patient_id,
+            patient["name"],
+            patient["age"],
+            patient["gender"],
+            patient["phone"],
+            patient["address"],
+            patient["condition"],
+            patient["severity"],
+            new_status,
+            bed_number,
+            "Allocated"
+        )
+
+        action_stack.push(f"Allocated bed {bed_number} to patient ID: {patient_id}")
+        load_all_structures()
+        return redirect('/')
+
+    return render_template(
+        'allocate_bed.html',
+        patient=patient,
+        available_beds=sorted(available_beds)
+    )
+
+
+@app.route('/edit/<int:patient_id>', methods=['GET', 'POST'])
+def edit(patient_id):
+    patient = get_patient_by_id(patient_id)
+
+    if not patient:
+        return "Patient not found", 404
+
+    if request.method == 'POST':
+        name = request.form['name']
+        age = request.form['age']
+        gender = request.form['gender']
+        phone = request.form['phone']
+        address = request.form['address']
+        condition = request.form['condition']
+        severity = request.form['severity']
+        status = request.form['status']
+        bed_number = request.form.get('bed_number', '')
+        bed_status = request.form.get('bed_status', 'Not Allocated')
+
+        update_patient(patient_id, name, age, gender, phone, address, condition, severity, status, bed_number, bed_status)
+        action_stack.push(f"Updated patient ID: {patient_id}")
+        load_all_structures()
+
+        return redirect('/')
+
+    return render_template('edit.html', patient=patient)
+
+
+@app.route('/search', methods=['GET'])
+def search():
+    keyword = request.args.get('keyword', '').strip()
+
+    if keyword == "":
+        patients = get_all_patients()
+    else:
+        patients = search_patients(keyword)
+
+    return render_template('index.html', patients=patients, severity_label=severity_label)
+
+
+@app.route('/sort', methods=['GET'])
+def sort():
+    patients = sort_by_severity()
+    return render_template('index.html', patients=patients, severity_label=severity_label)
+
+
+@app.route('/load-sample')
+def load_sample():
+    inserted, message = import_sample_patients()
+    return jsonify({
+        "inserted": inserted,
+        "message": message,
+        "total_patients_now": len(get_all_patients())
+    })
+
+
+@app.route('/debug/patients')
+def debug_patients():
+    return jsonify(get_all_patients())
+
+
+# ------------------------------
+# DSA ROUTES
+# ------------------------------
+
+@app.route('/hash/<int:patient_id>')
+def get_patient_from_hash(patient_id):
+    patient = patient_hash_table.get(patient_id)
+    if patient:
+        return jsonify(patient)
     return jsonify({"error": "Patient not found"}), 404
 
 
-# ---------------- BED ALLOCATION ----------------
-@app.route("/allocate/<int:beds>")
-def allocate(beds):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, nrc, name, age, severity, waiting_time, gender, phone, address
-        FROM patients
-    """)
-    rows = cursor.fetchall()
-    conn.close()
-
-    patients = [
-        Patient(
-            row["id"],
-            row["nrc"],
-            row["name"],
-            row["age"],
-            row["severity"],
-            row["waiting_time"],
-            row["gender"],
-            row["phone"],
-            row["address"]
-        )
-        for row in rows
-    ]
-
-    sorted_patients = merge_sort(patients)
-    allocated = sorted_patients[:beds]
-
-    return jsonify([p.to_dict() for p in allocated])
+@app.route('/hash-table')
+def display_hash_table():
+    return jsonify(patient_hash_table.display())
 
 
-# ---------------- RUN APP ----------------
-if __name__ == "__main__":
+@app.route('/queue')
+def display_queue():
+    return jsonify(patient_queue.display())
+
+
+@app.route('/stack')
+def display_stack():
+    return jsonify(action_stack.display())
+
+
+@app.route('/linked-list')
+def display_linked_list():
+    return jsonify(patient_linked_list.display())
+
+
+@app.route('/tree')
+def display_tree():
+    return jsonify(patient_tree.inorder_traversal())
+
+
+@app.route('/tree/search/<int:severity>')
+def search_tree(severity):
+    patient = patient_tree.search(severity)
+    if patient:
+        return jsonify(patient)
+    return jsonify({"error": "No patient found with that severity"}), 404
+
+
+if __name__ == '__main__':
     app.run(debug=True)

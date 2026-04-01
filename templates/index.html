@@ -69,315 +69,175 @@
 
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hospital Management System</title>
     <style>
         body {
-            font-family: Arial;
-            padding: 20px;
-            background: #f4f4f4;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f7fb;
         }
-
-        .box {
+        h1, h2 {
+            color: #2c3e50;
+        }
+        form, .search-box {
             background: white;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 15px;
             border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.08);
         }
-
-        input, select {
-            padding: 8px;
+        input, select, button {
             margin: 5px;
-            width: 200px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
         }
-
         button {
-            padding: 8px 12px;
-            cursor: pointer;
-            margin: 5px;
-        }
-
-        .discharge-btn {
-            background-color: crimson;
+            background: #3498db;
             color: white;
             border: none;
-            border-radius: 5px;
+            cursor: pointer;
         }
-
-        .allocate-box {
-            background: #e3f2fd;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 15px;
+        button:hover {
+            background: #2980b9;
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.08);
         }
-
         th, td {
-            border: 1px solid #ccc;
-            padding: 10px;
-            text-align: left;
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
         }
-
         th {
-            background-color: #0077b6;
+            background: #3498db;
             color: white;
         }
-
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+        a {
+            text-decoration: none;
+            margin: 0 5px;
+            font-weight: bold;
         }
-
-        .priority-list {
-            margin-top: 10px;
-            padding: 10px;
-            background: #fff3cd;
-            border-radius: 8px;
+        .edit-link {
+            color: #27ae60;
+        }
+        .delete-link {
+            color: #e74c3c;
+        }
+        .discharge-link {
+            color: #f39c12;
+        }
+        .bed-link {
+            color: #8e44ad;
+        }
+        .top-actions {
+            margin-bottom: 20px;
         }
     </style>
 </head>
-
 <body>
 
-<h1>🏥 Hospital Management System</h1>
+    <h1>Hospital Management System</h1>
 
-<div class="box">
-    <h2>Add Patient</h2>
+    <div class="top-actions">
+        <a href="/beds"><button type="button">View Bed Dashboard</button></a>
+    </div>
 
-    <input id="nrc" placeholder="NRC">
-    <input id="name" placeholder="Name">
-    <input id="age" placeholder="Age" type="number">
+    <form action="/add" method="POST">
+        <h2>Add Patient</h2>
+        <input type="text" name="name" placeholder="Full Name" required>
+        <input type="number" name="age" placeholder="Age" required>
 
-    <select id="severity">
-        <option value="">Select Severity</option>
-        <option value="1">1 - Critical</option>
-        <option value="2">2 - Very Serious</option>
-        <option value="3">3 - Moderate</option>
-        <option value="4">4 - Mild</option>
-        <option value="5">5 - Stable</option>
-    </select>
+        <select name="gender" required>
+            <option value="">Select Gender</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+        </select>
 
-    <input id="waiting_time" placeholder="Waiting Time (mins)" type="number">
+        <input type="text" name="phone" placeholder="Phone Number" required>
+        <input type="text" name="address" placeholder="Address" required>
+        <input type="text" name="condition" placeholder="Condition" required>
 
-    <select id="gender">
-        <option value="">Select Gender</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-    </select>
+        <select name="severity" required>
+            <option value="">Severity</option>
+            <option value="1">1 - Mild</option>
+            <option value="2">2 - Moderate</option>
+            <option value="3">3 - Serious</option>
+            <option value="4">4 - Critical</option>
+            <option value="5">5 - Emergency</option>
+        </select>
 
-    <input id="phone" placeholder="Phone Number">
-    <input id="address" placeholder="Address">
+        <input type="text" name="bed_number" placeholder="Bed Number (e.g. B01)">
+        <select name="bed_status">
+            <option value="Not Allocated">Not Allocated</option>
+            <option value="Allocated">Allocated</option>
+            <option value="Released">Released</option>
+        </select>
 
-    <button onclick="addPatient()">Save</button>
-</div>
+        <button type="submit">Add Patient</button>
+    </form>
 
-<div class="box">
-    <h2>Search Patient</h2>
-    <input id="search_id" placeholder="Enter Patient ID (e.g. 1)">
-    <button onclick="searchPatient()">Search</button>
-    <div id="search_result"></div>
-</div>
+    <div class="search-box">
+        <form action="/search" method="GET">
+            <input type="text" name="keyword" placeholder="Search by name, phone, condition, gender, bed number">
+            <button type="submit">Search</button>
+            <a href="/sort"><button type="button">Sort by Severity</button></a>
+            <a href="/"><button type="button">Reset</button></a>
+        </form>
+    </div>
 
-<div class="box">
-    <h2>Patient Dashboard</h2>
-    <button onclick="loadPatients()">Refresh</button>
+    <h2>Patient Records</h2>
 
     <table>
-        <thead>
-            <tr>
-                <th>Patient ID</th>
-                <th>Name</th>
-                <th>NRC</th>
-                <th>Age</th>
-                <th>Severity</th>
-                <th>Waiting Time</th>
-                <th>Gender</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="output"></tbody>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Condition</th>
+            <th>Severity</th>
+            <th>Status</th>
+            <th>Bed Number</th>
+            <th>Bed Status</th>
+            <th>Actions</th>
+        </tr>
+
+        {% for patient in patients %}
+        <tr>
+            <td>{{ patient.id }}</td>
+            <td>{{ patient.name }}</td>
+            <td>{{ patient.age }}</td>
+            <td>{{ patient.gender }}</td>
+            <td>{{ patient.phone }}</td>
+            <td>{{ patient.address }}</td>
+            <td>{{ patient.condition }}</td>
+            <td>{{ severity_label(patient.severity) }}</td>
+            <td>{{ patient.status }}</td>
+            <td>{{ patient.bed_number }}</td>
+            <td>{{ patient.bed_status }}</td>
+            <td>
+                <a class="edit-link" href="/edit/{{ patient.id }}">Edit</a>
+                <a class="bed-link" href="/allocate-bed/{{ patient.id }}">Allocate Bed</a>
+
+                {% if patient.status != 'Discharged' %}
+                <a class="discharge-link" href="/discharge/{{ patient.id }}" onclick="return confirm('Discharge this patient?')">Discharge</a>
+                {% endif %}
+
+                <a class="delete-link" href="/delete/{{ patient.id }}" onclick="return confirm('Delete this patient record completely?')">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
     </table>
-</div>
-
-<div class="box allocate-box">
-    <h2>Bed Allocation (Priority Queue Simulation)</h2>
-    <input id="bed_count" type="number" placeholder="Enter number of beds">
-    <button onclick="allocateBeds()">Allocate Beds</button>
-
-    <div class="priority-list">
-        <h3>Allocated Patients</h3>
-        <div id="allocation_output">No beds allocated yet.</div>
-    </div>
-</div>
-
-<script>
-function getSeverityLabel(severity) {
-    switch (String(severity)) {
-        case "1": return "Critical";
-        case "2": return "Very Serious";
-        case "3": return "Moderate";
-        case "4": return "Mild";
-        case "5": return "Stable";
-        default: return "Unknown";
-    }
-}
-
-function addPatient() {
-    fetch("/patients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            nrc: document.getElementById("nrc").value,
-            name: document.getElementById("name").value,
-            age: document.getElementById("age").value,
-            severity: document.getElementById("severity").value,
-            waiting_time: document.getElementById("waiting_time").value,
-            gender: document.getElementById("gender").value,
-            phone: document.getElementById("phone").value,
-            address: document.getElementById("address").value
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-
-        document.getElementById("nrc").value = "";
-        document.getElementById("name").value = "";
-        document.getElementById("age").value = "";
-        document.getElementById("severity").value = "";
-        document.getElementById("waiting_time").value = "";
-        document.getElementById("gender").value = "";
-        document.getElementById("phone").value = "";
-        document.getElementById("address").value = "";
-
-        loadPatients();
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        alert("Failed to save patient.");
-    });
-}
-
-function dischargePatient(id) {
-    if (confirm("Are you sure you want to discharge this patient?")) {
-        fetch(`/patients/${id}`, {
-            method: "DELETE"
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-            loadPatients();
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            alert("Failed to discharge patient.");
-        });
-    }
-}
-
-function searchPatient() {
-    const id = document.getElementById("search_id").value;
-
-    fetch(`/search/${id}`)
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            document.getElementById("search_result").innerHTML = `<p style="color:red;">${data.error}</p>`;
-        } else {
-            document.getElementById("search_result").innerHTML = `
-                <p><strong>Patient Found:</strong></p>
-                <p>ID: P${String(data.id).padStart(3, '0')}</p>
-                <p>Name: ${data.name}</p>
-                <p>NRC: ${data.nrc}</p>
-                <p>Age: ${data.age}</p>
-                <p>Severity: ${data.severity} - ${getSeverityLabel(data.severity)}</p>
-                <p>Waiting Time: ${data.waiting_time} mins</p>
-                <p>Gender: ${data.gender || ""}</p>
-                <p>Phone: ${data.phone || ""}</p>
-                <p>Address: ${data.address || ""}</p>
-            `;
-        }
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        document.getElementById("search_result").innerHTML = `<p style="color:red;">Search failed.</p>`;
-    });
-}
-
-function allocateBeds() {
-    const beds = document.getElementById("bed_count").value;
-
-    fetch(`/allocate/${beds}`)
-    .then(res => res.json())
-    .then(data => {
-        if (data.length === 0) {
-            document.getElementById("allocation_output").innerHTML = "No patients available.";
-            return;
-        }
-
-        let output = "<ul>";
-        data.forEach(patient => {
-            output += `
-                <li>
-                    <strong>P${String(patient.id).padStart(3, '0')}</strong> - 
-                    ${patient.name} | Severity: ${patient.severity} - ${getSeverityLabel(patient.severity)} | 
-                    Waiting: ${patient.waiting_time} mins
-                </li>
-            `;
-        });
-        output += "</ul>";
-
-        document.getElementById("allocation_output").innerHTML = output;
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        document.getElementById("allocation_output").innerHTML = "Allocation failed.";
-    });
-}
-
-function loadPatients() {
-    fetch("/patients")
-    .then(res => res.json())
-    .then(data => {
-        let rows = "";
-
-        data.forEach(patient => {
-            rows += `
-                <tr>
-                    <td>P${String(patient.id).padStart(3, '0')}</td>
-                    <td>${patient.name}</td>
-                    <td>${patient.nrc}</td>
-                    <td>${patient.age || ""}</td>
-                    <td>${patient.severity} - ${getSeverityLabel(patient.severity)}</td>
-                    <td>${patient.waiting_time} mins</td>
-                    <td>${patient.gender || ""}</td>
-                    <td>${patient.phone || ""}</td>
-                    <td>${patient.address || ""}</td>
-                    <td>
-                        <button class="discharge-btn" onclick="dischargePatient(${patient.id})">
-                            Discharge
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("output").innerHTML = rows;
-    })
-    .catch(error => {
-        console.error("Error loading patients:", error);
-    });
-}
-
-loadPatients();
-</script>
 
 </body>
 </html>

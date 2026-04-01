@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bed Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f7fb;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.08);
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        ul {
+            columns: 3;
+            -webkit-columns: 3;
+            -moz-columns: 3;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        a {
+            text-decoration: none;
+            color: #3498db;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Hospital Bed Dashboard</h1>
+
+    <div class="card">
+        <h2>Summary</h2>
+        <p><strong>Total Beds:</strong> {{ total_beds }}</p>
+        <p><strong>Allocated Beds:</strong> {{ allocated_count }}</p>
+        <p><strong>Available Beds:</strong> {{ available_count }}</p>
+    </div>
+
+    <div class="card">
+        <h2>Allocated Beds</h2>
+        {% if allocated_beds %}
+            <ul>
+                {% for bed in allocated_beds %}
+                    <li>{{ bed }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No beds currently allocated.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Available Beds</h2>
+        {% if available_beds %}
+            <ul>
+                {% for bed in available_beds %}
+                    <li>{{ bed }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No available beds.</p>
+        {% endif %}
+    </div>
+
+    <a href="/">← Back to Dashboard</a>
+
+</body>
+</html>

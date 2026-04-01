@@ -1,0 +1,57 @@
+[
+  {
+    "name": "John Banda",
+    "age": 34,
+    "gender": "Male",
+    "phone": "0977000001",
+    "address": "Kabulonga",
+    "condition": "Malaria",
+    "severity": 2,
+    "bed_number": "B01",
+    "bed_status": "Allocated"
+  },
+  {
+    "name": "Mary Phiri",
+    "age": 52,
+    "gender": "Female",
+    "phone": "0977000002",
+    "address": "Chilenje",
+    "condition": "Asthma",
+    "severity": 4,
+    "bed_number": "B02",
+    "bed_status": "Allocated"
+  },
+  {
+    "name": "Kelvin Tembo",
+    "age": 28,
+    "gender": "Male",
+    "phone": "0977000003",
+    "address": "Kanyama",
+    "condition": "Fracture",
+    "severity": 3,
+    "bed_number": "B03",
+    "bed_status": "Allocated"
+  },
+  {
+    "name": "Ruth Zulu",
+    "age": 61,
+    "gender": "Female",
+    "phone": "0977000004",
+    "address": "Matero",
+    "condition": "Hypertension",
+    "severity": 5,
+    "bed_number": "ICU01",
+    "bed_status": "Allocated"
+  },
+  {
+    "name": "Peter Mwila",
+    "age": 19,
+    "gender": "Male",
+    "phone": "0977000005",
+    "address": "Chelstone",
+    "condition": "Flu",
+    "severity": 1,
+    "bed_number": "",
+    "bed_status": "Not Allocated"
+  }
+]

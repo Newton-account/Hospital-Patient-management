@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Allocate Bed</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f7fb;
+            margin: 20px;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Allocate Bed</h1>
+
+<p><strong>Patient:</strong> {{ patient.name }}</p>
+<p><strong>Status:</strong> {{ patient.status }}</p>
+<p><strong>Current Bed:</strong> {{ patient.bed_number if patient.bed_number else "None" }}</p>
+
+<form method="POST">
+
+    <label>Select Available Bed:</label>
+    <select name="bed_number" required>
+        <option value="">-- Select Bed --</option>
+
+        {% for bed in available_beds %}
+            <option value="{{ bed }}"
+                {% if bed == patient.bed_number %}selected{% endif %}>
+                {{ bed }}
+            </option>
+        {% endfor %}
+
+    </select>
+
+    <button type="submit">Allocate / Reallocate Bed</button>
+
+</form>
+
+<br>
+<a href="/">← Back to Dashboard</a>
+
+</body>
+</html>
