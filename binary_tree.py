@@ -27,19 +27,17 @@ class BinarySearchTree:
             else:
                 node.right = TreeNode(patient)
 
-    # ✅ RECURSION USED HERE (EXAM CRITICAL)
+    # RECURSION USED HERE
     def inorder_traversal(self):
-        return self._inorder_recursive(self.root)
+        result = []
+        self._inorder_recursive(self.root, result)
+        return result
 
-    def _inorder_recursive(self, node):
-        if not node:
-            return []
-
-        return (
-            self._inorder_recursive(node.left)
-            + [node.patient]
-            + self._inorder_recursive(node.right)
-        )
+    def _inorder_recursive(self, node, result):
+        if node:
+            self._inorder_recursive(node.left, result)
+            result.append(node.patient)
+            self._inorder_recursive(node.right, result)
 
     def search(self, severity):
         return self._search_recursive(self.root, severity)
